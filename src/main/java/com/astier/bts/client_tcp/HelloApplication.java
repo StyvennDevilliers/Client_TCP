@@ -1,6 +1,6 @@
 
 //--enable-native-access=javafx.graphics
-package com.astier.bts.client_tcp_prof;
+package com.astier.bts.client_tcp;
 
 import javafx.application.Application;
 import javafx.event.EventHandler;

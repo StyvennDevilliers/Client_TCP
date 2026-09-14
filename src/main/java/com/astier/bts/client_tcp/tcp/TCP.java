@@ -3,20 +3,18 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.astier.bts.client_tcp_prof.tcp;
+package com.astier.bts.client_tcp.tcp;
 
 
-import com.astier.bts.client_tcp_prof.HelloController;
+import com.astier.bts.client_tcp.HelloController;
 import javafx.application.Platform;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintStream;
-import java.net.InetAddress;
-import java.net.Socket;
-import java.net.UnknownHostException;
+import java.io.*;
+import java.net.*;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Scanner;
 
 
 import static javafx.scene.paint.Color.RED;
@@ -32,6 +30,8 @@ public class TCP extends Thread {
     boolean connection = false;
     PrintStream out;
     BufferedReader in;
+    OutputStream outS;
+    InputStream inS;
 
     HelloController fxmlCont;
 
@@ -48,21 +48,67 @@ public class TCP extends Thread {
 
 
     public void connection() {
-       //todo
+        if(this.isAlive()){
+            return;
+        }
+        try{
+            if(!serveur.isReachable(500)){
+                return;
+            }
+            socket = new Socket(serveur.getHostName(),port);
+            //socket.setSoTimeout(5000);
+            connection= true;
+
+            inS = socket.getInputStream();
+            outS = socket.getOutputStream();
+            in = new BufferedReader(new InputStreamReader(inS));
+            out = new PrintStream(socket.getOutputStream(),true);
+        }catch (Exception e){
+            System.err.println(e.getMessage());
+        }
+        marche = true;
+        this.start();
     }
 
-    public void deconnection() throws InterruptedException {
-        //todo
+    public void deconnection() throws InterruptedException, IOException {
+        socket.close();
+        in.close();
+        inS.close();
+        out.close();
+        outS.close();
+        marche = false;
     }
 
     public void requette(String laRequette) throws IOException {
-        out.println(laRequette);  // envoi reseau
+        //out.println(laRequette);  // envoi reseau
+        System.out.println(laRequette.getBytes(StandardCharsets.UTF_8));
+        outS.write(laRequette.getBytes(StandardCharsets.UTF_8));
         System.out.println("la requette " + laRequette);
     }
 
     public void run() {
         while (marche) {
-            //todo
+            String message = null;
+            char[] buffer = new char[65535];
+            byte[] bufferByte = new byte[65535];
+
+            int nblus = 0;
+            try {
+                //nblus = in.read(buffer);
+                nblus=inS.read(bufferByte);
+
+                byte[] bufferByteTemps = new byte[nblus];
+                bufferByteTemps=Arrays.copyOf(bufferByte,nblus);
+            if (nblus > 0) {
+                   //message = new String(buffer, 0, nblus);
+                    message = new String(bufferByteTemps,0,nblus);
+
+                    updateMessage(message);
+                }
+            } catch (IOException e) {
+                System.err.println(e.getMessage());
+            }
+
         }
     }
 
