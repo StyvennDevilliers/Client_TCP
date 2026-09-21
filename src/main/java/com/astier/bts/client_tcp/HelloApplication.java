@@ -3,7 +3,6 @@
 package com.astier.bts.client_tcp;
 
 import javafx.application.Application;
-import javafx.event.EventHandler;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -12,8 +11,6 @@ import javafx.stage.Stage;
 
 
 import java.io.IOException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public class HelloApplication extends Application {
     @Override
@@ -22,7 +19,7 @@ public class HelloApplication extends Application {
         stage.setOnCloseRequest((event -> {
             try {
                 if (HelloController.enRun){
-                    HelloController.tcp.deconnection();
+                    HelloController.tcp_bin.deconnection();
                 }
                 System.exit(0);
             } catch (Exception ex) {
