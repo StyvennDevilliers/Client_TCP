@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.net.*;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 import static javafx.scene.paint.Color.RED;
@@ -33,7 +34,7 @@ public class UDP_Text extends Thread{
     }
 
 
-/*
+
     public void connection() {
         if(this.isAlive()){
             return;
@@ -51,34 +52,36 @@ public class UDP_Text extends Thread{
 
     public void deconnection() throws InterruptedException, IOException {
         fxmlCont.voyant.setFill(RED);
-        DatagramPacket paquet = new DatagramPacket(buffer, buffer.length,serveur,port);
-        socket.send("exit");
+        byte[] exit = "exit".getBytes(StandardCharsets.UTF_8);
+        DatagramPacket paquet = new DatagramPacket(exit, exit.length,serveur,port);
+        socket.send(paquet);
         Thread.sleep(1000);
         socket.close();
         marche = false;
     }
 
     public void requette(String laRequette) throws IOException {
-        out.println(laRequette);  // envoi reseau
+        DatagramPacket paquet = new DatagramPacket(laRequette.getBytes(StandardCharsets.UTF_8), laRequette.length(),serveur,port);
+        socket.send(paquet);  // envoi reseau
+        if(laRequette.equalsIgnoreCase("exit")) fxmlCont.deconnecter.fire();
+        marche = false;
         System.out.println("la requette " + laRequette);
+
     }
 
     public void run() {
         while (marche) {
-            String message = null;
-            char[] buffer = new char[65535];
             byte[] bufferByte = new byte[65535];
 
-            int nblus = 0;
             try {
-                DatagramPacket paquet = new DatagramPacket(buffer, buffer.length);
-                nblus = in.read(buffer);
+                DatagramPacket paquet = new DatagramPacket(bufferByte, bufferByte.length);
                 socket.receive(paquet);
+                int nblus = paquet.getLength();
 
-                byte[] bufferByteTemps = new byte[nblus];
+                byte[] bufferByteTemps;
                 bufferByteTemps= Arrays.copyOf(bufferByte,nblus);
                 if (nblus > 0) {
-                    message = new String(bufferByteTemps,0,nblus);
+                    String message = new String(bufferByteTemps,0,nblus);
 
                     updateMessage(message);
                 }

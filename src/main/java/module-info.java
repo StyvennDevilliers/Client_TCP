@@ -7,5 +7,6 @@ module com.astier.bts.client_tcp {
 
 
     opens com.astier.bts.client_tcp to javafx.fxml;
+    opens com.astier.bts.client_tcp.modele to com.google.gson;
     exports com.astier.bts.client_tcp;
 }

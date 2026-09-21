@@ -7,6 +7,7 @@ package com.astier.bts.client_tcp.tcp;
 
 
 import aes.Aes_cbc;
+import aes.Outils;
 import com.astier.bts.client_tcp.HelloController;
 import com.astier.bts.client_tcp.config.Lecture_Json;
 import com.astier.bts.client_tcp.modele.Config_AES;
@@ -56,18 +57,26 @@ public class TCP_Bin extends Thread {
             socket.connect(new InetSocketAddress(serveur.getHostName(),port),1000);
             //socket.setSoTimeout(5000);
             connection= true;
-            Lecture_Json lectureJson = new Lecture_Json("configuration_json.json");
+            Lecture_Json lectureJson = new Lecture_Json("src/main/resources/configuration_json.json");
             Config_AES configAes = lectureJson.getConfAES();
-            //aes = new Aes_cbc(configAes.mdp().getBytes(), configAes.iv().getBytes());
-            aes = new Aes_cbc("mot de passe aes".getBytes(), "ici vecteur d'in".getBytes());
+            System.out.println("motDePasse = " + configAes.motDePasse());
+            System.out.println("iv = " + configAes.iv());
+            if (configAes.motDePasse() == null) {
+                throw new RuntimeException("motDePasse est null");
+            }
+            if (configAes.iv() == null) {
+                throw new RuntimeException("iv est null");
+            }
+            aes = new Aes_cbc(Outils.normalizeChaine(configAes.motDePasse(),16), Outils.normalizeChaine(configAes.iv(),16));
 
             inS = socket.getInputStream();
             outS = socket.getOutputStream();
+            marche = true;
+            this.start();
+
         }catch (Exception e){
             updateMessage(DiagnosticException.afficheException(e));
         }
-        marche = true;
-        this.start();
     }
 
     public void deconnection() throws InterruptedException, IOException {
@@ -90,15 +99,15 @@ public class TCP_Bin extends Thread {
 
     public void run() {
         while (marche) {
-            String message = null;
             byte[] bufferByte = new byte[65535];
 
             try {
                 int nblus = inS.read(bufferByte);
-                if (nblus <= 0) break;
+                if (nblus == 0) break;
+                if (nblus == -1) break;
 
                 byte[] bufferByteTemps=Arrays.copyOf(bufferByte,nblus);
-                message = new String(aes.decryptage(bufferByteTemps));
+                String message = new String(aes.decryptage(bufferByteTemps));
                 updateMessage(message);
             } catch (Exception e) {
                 updateMessage(DiagnosticException.afficheException(e));

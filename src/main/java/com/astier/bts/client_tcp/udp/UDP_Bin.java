@@ -16,9 +16,7 @@ import javafx.application.Platform;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.Socket;
+import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -32,11 +30,9 @@ import static javafx.scene.paint.Color.RED;
 public class UDP_Bin extends Thread {
     int port;
     InetAddress serveur;
-    Socket socket;
+    DatagramSocket socket;
     boolean marche = false;
     boolean connection = false;
-    OutputStream outS;
-    InputStream inS;
     Aes_cbc aes;
 
     HelloController fxmlCont;
@@ -58,15 +54,20 @@ public class UDP_Bin extends Thread {
             return;
         }
         try{
-            socket = new Socket();
-            socket.connect(new InetSocketAddress(serveur.getHostName(),port),1000);
-            //socket.setSoTimeout(5000);
+            socket = new DatagramSocket();
+            socket.setSoTimeout(5000);
             connection= true;
-            Lecture_Json lectureJson = new Lecture_Json("configuration_json.json");
+            Lecture_Json lectureJson = new Lecture_Json("src/main/resources/configuration_json.json");
             Config_AES configAes = lectureJson.getConfAES();
-            aes = new Aes_cbc(configAes.mdp().getBytes(), configAes.iv().getBytes());
-            inS = socket.getInputStream();
-            outS = socket.getOutputStream();
+            System.out.println("motDePasse = " + configAes.motDePasse());
+            System.out.println("iv = " + configAes.iv());
+            if (configAes.motDePasse() == null) {
+                throw new RuntimeException("motDePasse est null");
+            }
+            if (configAes.iv() == null) {
+                throw new RuntimeException("iv est null");
+            }
+            aes = new Aes_cbc(Outils.normalizeChaine(configAes.motDePasse(),16), Outils.normalizeChaine(configAes.iv(),16));
         }catch (Exception e){
             updateMessage(DiagnosticException.afficheException(e));
         }
@@ -76,35 +77,38 @@ public class UDP_Bin extends Thread {
 
     public void deconnection() throws InterruptedException, IOException {
         fxmlCont.voyant.setFill(RED);
-        outS.write(aes.cryptage("exit\n".getBytes(StandardCharsets.UTF_8)));
-        outS.flush();
+        byte[] exitCrypt = aes.cryptage("exit".getBytes(StandardCharsets.UTF_8));
+        DatagramPacket paquet = new DatagramPacket(exitCrypt, exitCrypt.length,serveur,port);
+        socket.send(paquet);
         Thread.sleep(1000);
-        inS.close();
         socket.close();
         marche = false;
     }
 
     public void requette(String laRequette) throws IOException {
-        byte[] trame = aes.cryptage((laRequette + "\n").getBytes(StandardCharsets.UTF_8));
-        outS.write(trame);
-        outS.flush();
+        DatagramPacket paquet = new DatagramPacket(laRequette.getBytes(StandardCharsets.UTF_8), laRequette.length(),serveur,port);
+        socket.send(paquet);  // envoi reseau
         if(laRequette.equalsIgnoreCase("exit")) fxmlCont.deconnecter.fire();
+        marche = false;
         System.out.println("la requette " + laRequette);
     }
 
     public void run() {
         while (marche) {
-            String message = null;
             byte[] bufferByte = new byte[65535];
 
-            int nblus = 0;
             try {
-                nblus=inS.read(bufferByte);
-                if (nblus <= 0) return;
+                DatagramPacket paquet = new DatagramPacket(bufferByte, bufferByte.length);
+                socket.receive(paquet);
+                int nblus = paquet.getLength();
 
-                byte[] bufferByteTemps=Arrays.copyOf(bufferByte,nblus);
-                message = new String(aes.decryptage(bufferByteTemps));
-                updateMessage(message);
+                byte[] bufferByteTemps;
+                bufferByteTemps= Arrays.copyOf(bufferByte,nblus);
+                if (nblus > 0) {
+                    String message = new String(bufferByteTemps,0,nblus);
+
+                    updateMessage(message);
+                }
             } catch (IOException e) {
                 updateMessage(DiagnosticException.afficheException(e));
             }

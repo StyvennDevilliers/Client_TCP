@@ -69,7 +69,6 @@ public class TCP_Text extends Thread{
 
     public void run() {
         while (marche) {
-            String message = null;
             char[] buffer = new char[65535];
             byte[] bufferByte = new byte[65535];
 
@@ -80,7 +79,7 @@ public class TCP_Text extends Thread{
                 byte[] bufferByteTemps = new byte[nblus];
                 bufferByteTemps= Arrays.copyOf(bufferByte,nblus);
                 if (nblus > 0) {
-                    message = new String(bufferByteTemps,0,nblus);
+                    String message = new String(bufferByteTemps,0,nblus);
 
                     updateMessage(message);
                 }
