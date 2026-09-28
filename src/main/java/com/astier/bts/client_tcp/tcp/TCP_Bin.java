@@ -67,7 +67,7 @@ public class TCP_Bin extends Thread {
             if (configAes.iv() == null) {
                 throw new RuntimeException("iv est null");
             }
-            aes = new Aes_cbc(Outils.normalizeChaine(configAes.motDePasse(),16), Outils.normalizeChaine(configAes.iv(),16));
+            aes = new Aes_cbc(configAes.getMotdepasse(), configAes.getIV());
 
             inS = socket.getInputStream();
             outS = socket.getOutputStream();
