@@ -41,7 +41,7 @@ public class TCP_Text extends Thread{
         }
         try{
             socket = new Socket();
-            socket.connect(new InetSocketAddress(serveur.getHostName(),port),1000);
+            socket.connect(new InetSocketAddress(serveur,port),1000);
             connection= true;
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             out = new PrintStream(socket.getOutputStream(),true);
@@ -55,7 +55,6 @@ public class TCP_Text extends Thread{
     public void deconnection() throws InterruptedException, IOException {
         fxmlCont.voyant.setFill(RED);
         out.println("exit");
-        Thread.sleep(1000);
         out.close();
         in.close();
         socket.close();
@@ -76,7 +75,7 @@ public class TCP_Text extends Thread{
             try {
                 nblus = in.read(buffer);
 
-                byte[] bufferByteTemps = new byte[nblus];
+                byte[] bufferByteTemps;
                 bufferByteTemps= Arrays.copyOf(bufferByte,nblus);
                 if (nblus > 0) {
                     String message = new String(bufferByteTemps,0,nblus);

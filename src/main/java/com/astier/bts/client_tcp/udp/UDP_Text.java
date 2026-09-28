@@ -43,11 +43,12 @@ public class UDP_Text extends Thread{
             socket = new DatagramSocket();
             //socket.setSoTimeout(5000);
             connection= true;
+            marche = true;
+            this.start();
         }catch (Exception e){
             updateMessage(DiagnosticException.afficheException(e));
         }
-        marche = true;
-        this.start();
+
     }
 
     public void deconnection() throws InterruptedException, IOException {
@@ -56,12 +57,12 @@ public class UDP_Text extends Thread{
         DatagramPacket paquet = new DatagramPacket(exit, exit.length,serveur,port);
         socket.send(paquet);
         marche = false;
-        Thread.sleep(1000);
         socket.close();
     }
 
     public void requette(String laRequette) throws IOException {
-        DatagramPacket paquet = new DatagramPacket(laRequette.getBytes(StandardCharsets.UTF_8), laRequette.length(),serveur,port);
+        byte[] data = (laRequette + "\n").getBytes(StandardCharsets.UTF_8);
+        DatagramPacket paquet = new DatagramPacket(data, data.length,serveur,port);
         socket.send(paquet);  // envoi reseau
         if(laRequette.equalsIgnoreCase("exit")) fxmlCont.deconnecter.fire();
         System.out.println("la requette " + laRequette);
@@ -85,7 +86,8 @@ public class UDP_Text extends Thread{
                     updateMessage(message);
                 }
             } catch (IOException e) {
-                updateMessage(DiagnosticException.afficheException(e));
+                if(marche)updateMessage(DiagnosticException.afficheException(e));
+                break;
             }
 
         }

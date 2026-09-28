@@ -68,16 +68,18 @@ public class UDP_Bin extends Thread {
                 throw new RuntimeException("iv est null");
             }
             aes = new Aes_cbc(Outils.normalizeChaine(configAes.motDePasse(),16), Outils.normalizeChaine(configAes.iv(),16));
+            marche = true;
+            this.start();
         }catch (Exception e){
             updateMessage(DiagnosticException.afficheException(e));
         }
-        marche = true;
-        this.start();
     }
 
     public void deconnection() throws InterruptedException, IOException {
         fxmlCont.voyant.setFill(RED);
         byte[] exitCrypt = aes.cryptage("exit".getBytes(StandardCharsets.UTF_8));
+        if (exitCrypt == null) updateMessage("Erreur de chiffrement");
+
         DatagramPacket paquet = new DatagramPacket(exitCrypt, exitCrypt.length,serveur,port);
         socket.send(paquet);
         Thread.sleep(1000);
@@ -86,10 +88,14 @@ public class UDP_Bin extends Thread {
     }
 
     public void requette(String laRequette) throws IOException {
-        DatagramPacket paquet = new DatagramPacket(aes.cryptage((laRequette + "\n").getBytes(StandardCharsets.UTF_8)), laRequette.length(),serveur,port);
+        byte[] data = aes.cryptage((laRequette + "\n").getBytes(StandardCharsets.UTF_8));
+        if (data == null) updateMessage("Erreur de chiffrement");
+        DatagramPacket paquet = new DatagramPacket(data, data.length, serveur, port);
         socket.send(paquet);  // envoi reseau
-        if(laRequette.equalsIgnoreCase("exit")) fxmlCont.deconnecter.fire();
-        marche = false;
+        if(laRequette.equalsIgnoreCase("exit")) {
+            fxmlCont.deconnecter.fire();
+            marche = false;
+        }
         System.out.println("la requette " + laRequette);
     }
 
@@ -100,15 +106,12 @@ public class UDP_Bin extends Thread {
             try {
                 DatagramPacket paquet = new DatagramPacket(bufferByte, bufferByte.length);
                 socket.receive(paquet);
-                int nblus = paquet.getLength();
-
-                byte[] bufferByteTemps;
-                bufferByteTemps= Arrays.copyOf(bufferByte,nblus);
-                if (nblus > 0) {
-                    String message = new String(aes.decryptage(bufferByteTemps),0,nblus);
-
-                    updateMessage(message);
+                byte[] clair = aes.decryptage(Arrays.copyOf(paquet.getData(), paquet.getLength()));
+                if (clair == null){
+                    updateMessage("Erreur de déchiffrement");
+                    continue;
                 }
+                updateMessage(new String(clair, StandardCharsets.UTF_8));
             } catch (IOException e) {
                 updateMessage(DiagnosticException.afficheException(e));
             }

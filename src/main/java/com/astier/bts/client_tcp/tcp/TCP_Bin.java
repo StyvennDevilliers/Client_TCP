@@ -48,42 +48,42 @@ public class TCP_Bin extends Thread {
 
 
 
-    public void connection() {
+    public void connection() throws IOException {
         if(this.isAlive()){
             return;
         }
-        try{
-            socket = new Socket();
-            socket.connect(new InetSocketAddress(serveur.getHostName(),port),1000);
-            //socket.setSoTimeout(5000);
-            connection= true;
-            Lecture_Json lectureJson = new Lecture_Json("src/main/resources/configuration_json.json");
-            Config_AES configAes = lectureJson.getConfAES();
-            System.out.println("motDePasse = " + configAes.motDePasse());
-            System.out.println("iv = " + configAes.iv());
-            if (configAes.motDePasse() == null) {
-                throw new RuntimeException("motDePasse est null");
-            }
-            if (configAes.iv() == null) {
-                throw new RuntimeException("iv est null");
-            }
-            aes = new Aes_cbc(configAes.getMotdepasse(), configAes.getIV());
-
-            inS = socket.getInputStream();
-            outS = socket.getOutputStream();
-            marche = true;
-            this.start();
-
-        }catch (Exception e){
-            updateMessage(DiagnosticException.afficheException(e));
+        socket = new Socket();
+        socket.connect(new InetSocketAddress(serveur,port),1000);
+        //socket.setSoTimeout(5000);
+        connection= true;
+        Lecture_Json lectureJson = new Lecture_Json("src/main/resources/configuration_json.json");
+        Config_AES configAes = lectureJson.getConfAES();
+        System.out.println("motDePasse = " + configAes.motDePasse());
+        System.out.println("iv = " + configAes.iv());
+        if (configAes.motDePasse() == null) {
+            throw new RuntimeException("motDePasse est null");
         }
+        if (configAes.iv() == null) {
+            throw new RuntimeException("iv est null");
+        }
+        aes = new Aes_cbc(configAes.getMotdepasse(), configAes.getIV());
+
+        inS = socket.getInputStream();
+        outS = socket.getOutputStream();
+        marche = true;
+        this.start();
+
     }
 
     public void deconnection() throws InterruptedException, IOException {
         fxmlCont.voyant.setFill(RED);
-        outS.write(aes.cryptage("exit\n".getBytes(StandardCharsets.UTF_8)));
-        outS.flush();
-        Thread.sleep(1000);
+        byte[] clair = aes.cryptage("exit\n".getBytes(StandardCharsets.UTF_8));
+        if (clair == null) updateMessage("Erreur de chiffrement");
+        byte[] trame = aes.cryptage("exit\n".getBytes(StandardCharsets.UTF_8));
+        if (trame != null) {
+            outS.write(trame);
+            outS.flush();
+        }
         inS.close();
         socket.close();
         marche = false;
@@ -91,6 +91,11 @@ public class TCP_Bin extends Thread {
 
     public void requette(String laRequette) throws IOException {
         byte[] trame = aes.cryptage((laRequette + "\n").getBytes(StandardCharsets.UTF_8));
+        if (trame == null){
+            updateMessage("Erreur de chiffrement");
+            return;
+        }
+
         outS.write(trame);
         outS.flush();
         if(laRequette.equalsIgnoreCase("exit")) fxmlCont.deconnecter.fire();
@@ -107,10 +112,16 @@ public class TCP_Bin extends Thread {
                 if (nblus == -1) break;
 
                 byte[] bufferByteTemps=Arrays.copyOf(bufferByte,nblus);
-                String message = new String(aes.decryptage(bufferByteTemps));
+                byte[] clair = aes.decryptage(bufferByteTemps);
+                if (clair == null){
+                    updateMessage("Erreur de déchiffrement");
+                    continue;
+                }
+                String message = new String(clair, StandardCharsets.UTF_8);
                 updateMessage(message);
             } catch (Exception e) {
-                updateMessage(DiagnosticException.afficheException(e));
+                if(marche)updateMessage(DiagnosticException.afficheException(e));
+                break;
             }
 
         }

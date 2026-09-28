@@ -13,37 +13,42 @@ public class MulticastDiffusion {
     private byte[] dataReponse= new byte[19];
     private int port = 5555;
     private int portReponse = 5556;
-    private byte tts = 60;
+    private byte ttl = 60;
     private DatagramPacket dp;
     private MulticastSocket ms;
-    private DatagramSocket ds;
+    private final DatagramSocket ds;
     private Config_Client conf;
+    private Thread ecoute;
 
     public MulticastDiffusion() throws IOException {
+        ds = new DatagramSocket(portReponse);
+        ds.setSoTimeout(3000);
+
         ms = new MulticastSocket();
         NetworkInterface ni = NetworkInterface.getByName(INTERFACE_NAME);
-        ms.setNetworkInterface(ni);
-        ms.setTimeToLive(60);
-        dp = new DatagramPacket(DATA, DATA.length, IA,port);
-        ms.send(dp);
+        if (ni != null) ms.setNetworkInterface(ni);
+        ms.setTimeToLive(ttl);
+        ms.send(new DatagramPacket(DATA, DATA.length, IA,port));
+        ms.close();
 
-        new Thread(()->{
-            dp = new DatagramPacket(dataReponse,dataReponse.length);
-            try {
-                ds = new DatagramSocket(portReponse);
-                ds.receive(dp);
-                String message = new String(dp.getData());
-                if (!message.isEmpty()) {
-                    String[] morceau = message.split(";");
-                    conf = new Config_Client(morceau[0], Integer.parseInt(morceau[1]), Integer.parseInt(morceau[2]));
+        ecoute = new Thread(()->{
+                try (ds){
+                    dp = new DatagramPacket(dataReponse, dataReponse.length);
+                    ds.receive(dp );
+                    String message = new String(dp.getData(), 0, dp.getLength(), StandardCharsets.UTF_8).trim();
+                    if (!message.isEmpty()) {
+                        String[] morceau = message.split(";");
+                        conf = new Config_Client(morceau[0], Integer.parseInt(morceau[1]), Integer.parseInt(morceau[2]));
+                    }
+                } catch (IOException | RuntimeException e) {
+                    conf = null;
                 }
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }).start();
+            });
+        ecoute.start();
     }
 
-    public Config_Client getConf() {
+    public Config_Client getConf() throws InterruptedException {
+        ecoute.join(3500); // attend la réponse ou le timeout
         return conf;
     }
 }

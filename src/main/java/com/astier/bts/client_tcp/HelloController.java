@@ -36,11 +36,19 @@ public class HelloController implements Initializable {
     public void initialize(URL location, ResourceBundle resources) {
         try {
             MulticastDiffusion multicastDiffusion = new MulticastDiffusion();
-            Thread.sleep(1000);
             Config_Client config = multicastDiffusion.getConf();
-            adresse = config.address();
-            port_UDP = String.valueOf(config.port_UDP());
-            port_TCP = String.valueOf(config.port_TCP());
+            if(config==null){
+                TextAreaReponses.appendText("Serveur introuvable (pas de réponse multicast)\n");
+                checkbox_TCP.setDisable(true);
+                checkbox_UDP.setDisable(true);
+                connecter.setDisable(true);
+                button.setDisable(true);
+            }
+            else {
+                adresse = config.address();
+                port_UDP = String.valueOf(config.port_UDP());
+                port_TCP = String.valueOf(config.port_TCP());
+            }
         } catch (Exception e) {
             DiagnosticException.afficheException(e);
         }
