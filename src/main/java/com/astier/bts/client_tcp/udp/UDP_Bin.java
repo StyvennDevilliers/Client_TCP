@@ -86,7 +86,7 @@ public class UDP_Bin extends Thread {
     }
 
     public void requette(String laRequette) throws IOException {
-        DatagramPacket paquet = new DatagramPacket(laRequette.getBytes(StandardCharsets.UTF_8), laRequette.length(),serveur,port);
+        DatagramPacket paquet = new DatagramPacket(aes.cryptage((laRequette + "\n").getBytes(StandardCharsets.UTF_8)), laRequette.length(),serveur,port);
         socket.send(paquet);  // envoi reseau
         if(laRequette.equalsIgnoreCase("exit")) fxmlCont.deconnecter.fire();
         marche = false;
@@ -105,7 +105,7 @@ public class UDP_Bin extends Thread {
                 byte[] bufferByteTemps;
                 bufferByteTemps= Arrays.copyOf(bufferByte,nblus);
                 if (nblus > 0) {
-                    String message = new String(bufferByteTemps,0,nblus);
+                    String message = new String(aes.decryptage(bufferByteTemps),0,nblus);
 
                     updateMessage(message);
                 }
